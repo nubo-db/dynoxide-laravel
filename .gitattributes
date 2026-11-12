@@ -1,0 +1,10 @@
+* text=auto eol=lf
+*.gz binary
+*.zip binary
+/.github export-ignore
+/tests export-ignore
+/phpunit.xml.dist export-ignore
+/phpunit.pest.xml.dist export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/scripts export-ignore

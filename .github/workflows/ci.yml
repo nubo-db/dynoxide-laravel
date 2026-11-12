@@ -1,0 +1,153 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# The tests need a Dynoxide 1.7.0 build. Until the engine release exists, it
+# comes from the private staging repo's Test Build for this commit of the
+# engine branch, read with DYNOXIDE_STAGING_TOKEN.
+env:
+  ENGINE_REPO: hicksy/dynoxide-staging
+  # Its Test Build ran on 10 November 2026, and the builds expire on
+  # 8 February 2027; run Test Build again before then.
+  ENGINE_COMMIT: 84cc8fe5ff8fb96279d2a8fb001529f6c966fe55
+
+jobs:
+  test:
+    name: ${{ matrix.os }}-php${{ matrix.php }}-laravel${{ matrix.laravel }}-${{ matrix.stability }}
+    runs-on: ${{ matrix.os }}
+    # The suite takes well under a minute, so a hung server fails the leg
+    # here rather than holding a runner for six hours.
+    timeout-minutes: 20
+    env:
+      LEG: ${{ matrix.os }}-php${{ matrix.php }}-laravel${{ matrix.laravel }}-${{ matrix.stability }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every supported PHP and Laravel pair, at the lowest and the newest
+        # versions Composer allows. Laravel 13 needs PHP 8.3 or later.
+        os: [ubuntu-24.04]
+        php: ['8.2', '8.3', '8.4', '8.5']
+        laravel: ['12', '13']
+        stability: [prefer-lowest, prefer-stable]
+        exclude:
+          - { laravel: '13', php: '8.2' }
+        # The newest pair once more on macOS and on Windows. Windows has no
+        # POSIX signals, so it leaves out the posix group: the dynoxide:serve
+        # tests and the one start-failure test that uses a shell script.
+        include:
+          - { os: macos-26, php: '8.5', laravel: '13', stability: prefer-stable }
+          - { os: windows-2025, php: '8.5', laravel: '13', stability: prefer-stable }
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          # The serve command traps signals with pcntl, and its tests send
+          # them with posix. Windows has neither.
+          extensions: ${{ startsWith(matrix.os, 'windows') && 'dom, curl, mbstring, zip, zlib, openssl, fileinfo' || 'dom, curl, mbstring, zip, zlib, openssl, fileinfo, pcntl, posix' }}
+          coverage: none
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      # composer.json finds the core package in a sibling checkout, for working
+      # on both at once. Until nubo-db/dynoxide 1.7.0 is on Packagist, CI takes
+      # the core from its feat/package branch on GitHub instead, aliased so
+      # that it meets the ^1.7 constraint. Once 1.7.0 is on Packagist, this
+      # step and the path repository both go.
+      - name: Take the core package from GitHub
+        shell: bash
+        run: |
+          composer config --unset repositories
+          composer config repositories.core vcs https://github.com/nubo-db/dynoxide-php
+          composer require --no-update "nubo-db/dynoxide:dev-feat/package as 1.7.0"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          testbench='${{ matrix.laravel == '12' && '10.*' || '11.*' }}'
+          composer require --dev --no-update "laravel/framework:${{ matrix.laravel }}.*" "orchestra/testbench:$testbench"
+          composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress
+          composer show laravel/framework orchestra/testbench phpunit/phpunit pestphp/pest nubo-db/dynoxide | grep -E '^(name|versions)'
+
+      - name: Fetch the engine build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.DYNOXIDE_STAGING_TOKEN }}
+        run: |
+          case "$RUNNER_OS-$RUNNER_ARCH" in
+            Linux-X64) target=x86_64-unknown-linux-musl ;;
+            Linux-ARM64) target=aarch64-unknown-linux-musl ;;
+            macOS-ARM64) target=aarch64-apple-darwin ;;
+            macOS-X64) target=x86_64-apple-darwin ;;
+            Windows-X64) target=x86_64-pc-windows-msvc ;;
+            *) echo "::error::No engine build for $RUNNER_OS-$RUNNER_ARCH"; exit 1 ;;
+          esac
+          binary=$(scripts/fetch-engine-build.sh "$ENGINE_REPO" "$ENGINE_COMMIT" "$target" "$RUNNER_TEMP/engine")
+          echo "DYNOXIDE_BINARY=$binary" >> "$GITHUB_ENV"
+
+      # A binary without the launcher flags, for the dynoxide:serve test of
+      # one. Those tests are POSIX only, so Windows doesn't need it.
+      - name: Fetch the Dynoxide 1.6.0 release
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          case "$RUNNER_OS-$RUNNER_ARCH" in
+            Linux-X64) target=x86_64-unknown-linux-musl ;;
+            Linux-ARM64) target=aarch64-unknown-linux-musl ;;
+            macOS-ARM64) target=aarch64-apple-darwin ;;
+            macOS-X64) target=x86_64-apple-darwin ;;
+            *) echo "::error::No 1.6.0 release for $RUNNER_OS-$RUNNER_ARCH"; exit 1 ;;
+          esac
+          binary=$(scripts/fetch-legacy-binary.sh "$target" "$RUNNER_TEMP/legacy")
+          echo "DYNOXIDE_LEGACY_BINARY=$binary" >> "$GITHUB_ENV"
+
+      # A skipped test fails the leg, so a missing binary or extension can't
+      # pass for a green run.
+      - name: PHPUnit
+        shell: bash
+        run: vendor/bin/phpunit --fail-on-skipped ${{ runner.os == 'Windows' && '--exclude-group posix' || '' }}
+
+      # The Pest file, in one process with two test classes that use the
+      # trait directly, so all three share one server.
+      - name: Pest
+        shell: bash
+        run: vendor/bin/pest -c phpunit.pest.xml.dist --fail-on-skipped
+
+      - name: Record the leg
+        shell: bash
+        run: |
+          mkdir -p leg
+          echo "$LEG" > leg/leg.txt
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: leg-${{ env.LEG }}
+          path: leg/leg.txt
+
+  legs:
+    name: every leg ran
+    needs: [test]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v6
+        with:
+          pattern: leg-*
+          path: legs
+
+      - name: Compare against the expected list
+        run: php scripts/check-legs.php .github/expected-legs.txt legs

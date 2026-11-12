@@ -1,0 +1,82 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/*
+ * A stand-in for the dynoxide binary, for the dynoxide:serve tests that run
+ * the command in the test's own process and so need a server that stops by
+ * itself. The environment says what it does:
+ *
+ * - FAKE_DYNOXIDE_VERSION: what --version prints (1.7.0 by default). Below
+ *   1.7.0 it behaves as a binary without --ready-json does: it prints only
+ *   the "listening on" line, and answers GET / with 200.
+ * - FAKE_DYNOXIDE_STDERR: a line to write to stderr before it's ready.
+ * - FAKE_DYNOXIDE_MODE: "ready" (the default) reports ready and exits a
+ *   moment later; "never" never reports ready and exits when stdin closes;
+ *   "exit:<status>" exits with that status before it's ready; "garbled"
+ *   prints a first stdout line that isn't a ready line, then waits for stdin
+ *   to close.
+ */
+
+$version = getenv('FAKE_DYNOXIDE_VERSION') ?: '1.7.0';
+if (($argv[1] ?? null) === '--version') {
+    echo "dynoxide {$version}\n";
+    exit(0);
+}
+
+$options = [];
+foreach (array_slice($argv, 2) as $argument) {
+    if (preg_match('/^--([a-z-]+)(?:=(.*))?$/', $argument, $m) === 1) {
+        $options[$m[1]] = $m[2] ?? true;
+    }
+}
+$host = (string) ($options['host'] ?? '127.0.0.1');
+$port = (int) ($options['port'] ?? 8800);
+$endpoint = "http://{$host}:{$port}";
+
+$stderr = getenv('FAKE_DYNOXIDE_STDERR');
+if ($stderr !== false && $stderr !== '') {
+    fwrite(STDERR, $stderr . "\n");
+}
+
+$mode = getenv('FAKE_DYNOXIDE_MODE') ?: 'ready';
+if (str_starts_with($mode, 'exit:')) {
+    exit((int) substr($mode, 5));
+}
+if ($mode === 'garbled') {
+    echo "this is not a ready line\n";
+}
+if ($mode === 'never' || $mode === 'garbled') {
+    while (!feof(STDIN)) {
+        fgets(STDIN);
+    }
+    exit(0);
+}
+
+if (isset($options['ready-json'])) {
+    fwrite(STDERR, "Dynoxide listening on {$endpoint}\n");
+    echo json_encode(['event' => 'ready', 'schema' => 1, 'version' => $version, 'endpoint' => $endpoint, 'host' => $host, 'port' => $port, 'pid' => getmypid()]), "\n";
+    usleep(300_000);
+    exit(0);
+}
+
+$server = stream_socket_server("tcp://{$host}:{$port}", $errno, $error);
+if ($server === false) {
+    fwrite(STDERR, "error: {$error}\n");
+    exit(1);
+}
+fwrite(STDERR, "Dynoxide listening on {$endpoint}\n");
+$until = microtime(true) + 5;
+while (microtime(true) < $until) {
+    $client = @stream_socket_accept($server, 0.1);
+    if ($client === false) {
+        continue;
+    }
+    fgets($client);
+    fwrite($client, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+    fclose($client);
+    usleep(300_000);
+    exit(0);
+}
+exit(0);

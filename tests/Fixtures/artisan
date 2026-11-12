@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+ * A stand-in for an app's `artisan` script, run as a real process by the
+ * dynoxide:serve tests. It boots Testbench's skeleton app with the package's
+ * provider and hands the console kernel the command line, as `artisan` does.
+ * vendor/bin/testbench isn't used because it registers its own signal
+ * handlers, and writes into the shared skeleton, which a real app wouldn't.
+ */
+
+use Dynoxide\Laravel\DynoxideServiceProvider;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Orchestra\Testbench\Foundation\Application;
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Output\ConsoleOutput;
+
+require __DIR__ . '/../../vendor/autoload.php';
+
+$app = Application::create(options: ['extra' => [
+    'providers' => [DynoxideServiceProvider::class],
+    'dont-discover' => ['*'],
+]]);
+
+// Testbench's default console kernel rethrows errors for its own tests; an
+// app's kernel reports them and returns a status.
+$app->singleton(Kernel::class, ConsoleKernel::class);
+
+$kernel = $app->make(Kernel::class);
+$status = $kernel->handle($input = new ArgvInput(), new ConsoleOutput());
+$kernel->terminate($input, $status);
+
+exit($status);

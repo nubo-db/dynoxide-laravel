@@ -1,0 +1,18 @@
+# Every leg of the test job in ci.yml, one per line. A leg missing from a run,
+# or a run's leg missing from here, fails the run.
+ubuntu-24.04-php8.2-laravel12-prefer-lowest
+ubuntu-24.04-php8.2-laravel12-prefer-stable
+ubuntu-24.04-php8.3-laravel12-prefer-lowest
+ubuntu-24.04-php8.3-laravel12-prefer-stable
+ubuntu-24.04-php8.3-laravel13-prefer-lowest
+ubuntu-24.04-php8.3-laravel13-prefer-stable
+ubuntu-24.04-php8.4-laravel12-prefer-lowest
+ubuntu-24.04-php8.4-laravel12-prefer-stable
+ubuntu-24.04-php8.4-laravel13-prefer-lowest
+ubuntu-24.04-php8.4-laravel13-prefer-stable
+ubuntu-24.04-php8.5-laravel12-prefer-lowest
+ubuntu-24.04-php8.5-laravel12-prefer-stable
+ubuntu-24.04-php8.5-laravel13-prefer-lowest
+ubuntu-24.04-php8.5-laravel13-prefer-stable
+macos-26-php8.5-laravel13-prefer-stable
+windows-2025-php8.5-laravel13-prefer-stable

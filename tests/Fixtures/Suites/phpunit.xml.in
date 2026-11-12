@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="{{BOOTSTRAP}}" colors="false" cacheResult="false">
+    <testsuites>
+        <testsuite name="fixture">
+            <directory>{{TESTS}}</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        {{ENV}}
+    </php>
+    {{EXTENSIONS}}
+</phpunit>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The Pest file, run beside the two test classes that use the trait
+    directly, so all three share one process and one server:
+
+        vendor/bin/pest -c phpunit.pest.xml.dist
+
+    phpunit.xml.dist leaves tests/Pest out, since PHPUnit can't run it.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         failOnWarning="true"
+         failOnRisky="true">
+    <testsuites>
+        <testsuite name="pest">
+            <directory>tests/Pest</directory>
+            <file>tests/UsesDynoxideAcrossClassesTest.php</file>
+            <file>tests/UsesDynoxideAcrossClassesSecondTest.php</file>
+        </testsuite>
+    </testsuites>
+</phpunit>
