@@ -76,7 +76,10 @@ jobs:
           testbench='${{ matrix.laravel == '12' && '10.*' || '11.*' }}'
           composer require --dev --no-update "laravel/framework:${{ matrix.laravel }}.*" "orchestra/testbench:$testbench"
           composer update --${{ matrix.stability }} --prefer-dist --no-interaction --no-progress
-          composer show laravel/framework orchestra/testbench phpunit/phpunit pestphp/pest nubo-db/dynoxide | grep -E '^(name|versions)'
+          # composer show takes one package at a time.
+          for package in laravel/framework orchestra/testbench phpunit/phpunit pestphp/pest nubo-db/dynoxide; do
+            composer show "$package" | grep -E '^(name|versions) '
+          done
 
       - name: Fetch the engine build
         shell: bash
