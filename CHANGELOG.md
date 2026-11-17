@@ -2,7 +2,9 @@
 
 ## [Unreleased]
 
-The first release, to be tagged 1.0.0. It needs `nubo-db/dynoxide` 1.7.0 or
+## [1.0.0] - 2026-11-17
+
+The first release. It needs `nubo-db/dynoxide` 1.7.0 or
 later, PHP 8.2 or later, and Laravel 12 or 13.
 
 - The `UsesDynoxide` testing trait: one Dynoxide server per test process,
