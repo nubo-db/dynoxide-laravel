@@ -15,8 +15,6 @@ verifies and starts the Dynoxide binary, and adds the Laravel parts:
 It reads your app's own config, so custom table names, custom key attributes
 and extra `dynamodb` stores need no extra setup.
 
-This package is under development and hasn't been released yet.
-
 ## Install
 
 ```sh
