@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-17
+
+### Fixed
+
+- Needs `nubo-db/dynoxide` 1.7.0.1 or later. 1.7.0 writes to stderr on
+  every start on Windows, which fails any test run in a separate process.
+
 ## [1.0.0] - 2026-11-17
 
 The first release. It needs `nubo-db/dynoxide` 1.7.0 or
