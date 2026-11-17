@@ -543,13 +543,18 @@ final class UsesDynoxideProcessTest extends PHPUnitTestCase
         }
         $childEnv = array_merge($childEnv, ['FIXTURE_REPORT' => $report], $env);
 
+        // One handle for both streams, so they share a file position. Two
+        // handles opened in append mode write over each other on Windows.
+        $outputHandle = fopen($output, 'a');
+        $this->assertIsResource($outputHandle);
         $process = proc_open(
             [PHP_BINARY, realpath(self::ROOT . "/vendor/bin/{$tool}"), '-c', $config, '--colors=never', ...$args],
-            [0 => ['pipe', 'r'], 1 => ['file', $output, 'a'], 2 => ['file', $output, 'a']],
+            [0 => ['pipe', 'r'], 1 => $outputHandle, 2 => $outputHandle],
             $pipes,
             realpath(self::ROOT),
             $childEnv,
         );
+        fclose($outputHandle);
         $this->assertIsResource($process);
         fclose($pipes[0]);
         $deadline = microtime(true) + 180;
