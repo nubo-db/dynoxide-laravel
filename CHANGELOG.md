@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-20
+
+Needs `nubo-db/dynoxide` 1.8.0 or later, which runs Dynoxide 1.8.0.
+
+### Behaviour changes
+
+- **`dynoxide:serve` on a taken port exits 4**, not 1, with Dynoxide 1.8.0
+  or later. It passes Dynoxide's own status through, and 1.8.0 exits 4 for a
+  port that's in use. The message now names the port and how to change it.
+  An older binary, through `DYNOXIDE_BINARY`, still exits 1 with the general
+  message.
+
+### Added
+
+- **`port` in `dynoxideOptions()`** fixes the port the tests' server listens
+  on. It's kept when ParaTest gives a worker its own database file, but a
+  non-zero port under ParaTest or in a `#[RunInSeparateProcess]` test throws
+  a `ConfigException`, since each of those processes starts a server of its
+  own.
+
 ## [1.0.1] - 2026-11-17
 
 ### Fixed

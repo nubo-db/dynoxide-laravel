@@ -175,6 +175,19 @@ protected function dynoxideOptions(): array
 It's called before the app exists, so Laravel's helpers such as
 `storage_path()` don't work in it.
 
+`port` fixes the port the server listens on, where something outside the
+tests needs to know it in advance. To set it from outside the code, use an
+environment variable that's there before the app boots, from the shell, CI or
+an `<env>` in `phpunit.xml`, not `.env`: the first call comes before Laravel
+loads `.env`, so the second would ask for a different port and fail. An
+environment variable is a string, so cast it:
+`['port' => (int) getenv('DYNOXIDE_TEST_PORT')]`. Without the cast the core
+refuses it with "must be of type int, string given". If the port is
+taken, the tests fail with a `StartException` that names it, whose previous
+exception is the core's `PortInUseException`. Under
+ParaTest, and in a test that runs in a separate process, a fixed port is
+refused, since each of those processes starts a server of its own.
+
 A process runs one server, so every test case in it must return the same
 options, or the second one fails with an error naming both classes. Put
 `dynoxideOptions()` on the base `TestCase` too.
@@ -321,7 +334,9 @@ The data lives in memory and goes when the command stops. The options are:
 | `--timeout` | Seconds to wait for Dynoxide to be ready. Defaults to 10, or `DYNOXIDE_START_TIMEOUT`. |
 | `--no-tables` | Start without creating the app's tables. |
 
-Change the port with `DYNOXIDE_PORT` and `DYNAMODB_ENDPOINT` together. If a
+With Dynoxide 1.8.0 or later, if the port is taken the command says so,
+names the port, and exits with status 4, which is Dynoxide's own. Change the port with `DYNOXIDE_PORT` and
+`DYNAMODB_ENDPOINT` together. If a
 `dynamodb` store or `queue.failed` names an endpoint on another port, the
 command warns and names the config key. To change the defaults in a config
 file instead, publish it:
