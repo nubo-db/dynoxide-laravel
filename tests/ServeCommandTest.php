@@ -124,7 +124,7 @@ final class ServeCommandTest extends PHPUnitTestCase
         $this->assertTrue(self::portIsFree($port), "Port {$port} is still in use.");
     }
 
-    public function test_a_port_in_use_fails_with_dynoxides_message(): void
+    public function test_a_port_in_use_fails_naming_the_port_and_how_to_change_it(): void
     {
         $port = self::freePort();
         $holder = stream_socket_server("tcp://127.0.0.1:{$port}");
@@ -138,9 +138,11 @@ final class ServeCommandTest extends PHPUnitTestCase
             fclose($holder);
         }
 
-        // Dynoxide's own status, passed through.
-        $this->assertSame(1, $status);
-        $this->assertStringContainsString("port {$port} is already in use", $process->getOutput() . $process->getErrorOutput());
+        // Dynoxide's own status, passed through: 1.8.0 exits 4 for a taken port.
+        $output = $process->getOutput() . $process->getErrorOutput();
+        $this->assertSame(4, $status, $output);
+        $this->assertStringContainsString("Port {$port} is already in use", $output);
+        $this->assertStringContainsString('DYNOXIDE_PORT', $output);
         $this->assertStringNotContainsString('Dynoxide running on', $process->getOutput());
     }
 

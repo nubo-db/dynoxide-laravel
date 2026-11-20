@@ -64,6 +64,7 @@ final class DynoxideProcess
      */
     public static function server(string $testCase, array $options): Server
     {
+        self::checkPort($testCase, $options);
         if (!self::$attempted) {
             self::$attempted = true;
             self::start($testCase, $options);
@@ -307,7 +308,38 @@ final class DynoxideProcess
             schema: $options->schema,
             startTimeout: $options->startTimeout,
             log: $options->log,
+            port: $options->port,
         );
+    }
+
+    /**
+     * A fixed port can't work where each process starts its own server: every
+     * ParaTest worker, and every #[RunInSeparateProcess] test, would ask for
+     * the same one. It's thrown on every call rather than kept as the start
+     * failure, since nothing was started.
+     *
+     * @param class-string $testCase
+     * @param array<string, mixed> $options
+     * @throws ConfigException
+     */
+    private static function checkPort(string $testCase, array $options): void
+    {
+        $port = $options['port'] ?? 0;
+        if ($port === 0 || $port === '0' || $port === null) {
+            return;
+        }
+        $paratest = getenv('PARATEST');
+        $where = match (true) {
+            $paratest !== false && $paratest !== '' => 'ParaTest runs each worker with a server of its own',
+            self::inSeparateProcess() => 'a test that runs in a separate process starts a server of its own',
+            default => null,
+        };
+        if ($where !== null) {
+            throw new ConfigException(
+                "{$testCase}::dynoxideOptions() asks for port " . var_export($port, true) . ", but {$where}, and they "
+                . "can't all listen on one port. Leave the port out, and each server gets a free one.",
+            );
+        }
     }
 
     /**

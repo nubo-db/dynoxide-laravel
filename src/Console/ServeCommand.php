@@ -33,6 +33,9 @@ final class ServeCommand extends Command
 
     private const STOP_GRACE_SECONDS = 5;
 
+    /** Dynoxide 1.8.0 and later exit with this when the port is taken. */
+    private const EXIT_PORT_IN_USE = 4;
+
     private const POLL_MICROSECONDS = 25_000;
 
     private ?Process $process = null;
@@ -105,7 +108,10 @@ final class ServeCommand extends Command
 
         if ($ready === null) {
             $status = $this->process->getExitCode();
-            $this->components->error('Dynoxide exited with status ' . ($status ?? 'unknown') . ' before it was ready.');
+            $this->components->error($status === self::EXIT_PORT_IN_USE
+                ? "Port {$port} is already in use, so Dynoxide couldn't start on it. Stop what's using it, or start "
+                    . 'Dynoxide on another port with --port or DYNOXIDE_PORT in .env.'
+                : 'Dynoxide exited with status ' . ($status ?? 'unknown') . ' before it was ready.');
 
             return $status === 0 || $status === null ? self::FAILURE : $status;
         }

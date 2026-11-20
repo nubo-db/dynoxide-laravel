@@ -330,6 +330,19 @@ final class ServeCommandInProcessTest extends TestCase
             ->assertExitCode(3);
     }
 
+    #[Group('posix')]
+    public function test_a_taken_port_is_named_with_how_to_change_it(): void
+    {
+        $this->useFake(['FAKE_DYNOXIDE_MODE' => 'exit:4', 'FAKE_DYNOXIDE_STDERR' => 'error: port 8899 is already in use']);
+
+        [$status, $output] = $this->serve(['--port' => 8899, '--no-tables' => true]);
+
+        $this->assertSame(4, $status, $output);
+        $this->assertStringContainsString('Port 8899 is already in use', $output);
+        $this->assertStringContainsString('DYNOXIDE_PORT', $output);
+        $this->assertStringNotContainsString('before it was ready', $output);
+    }
+
     /**
      * The process keeps everything its child writes unless it's told to
      * drop it, so a server left running for days would fill the disk with
