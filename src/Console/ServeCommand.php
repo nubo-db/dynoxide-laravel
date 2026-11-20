@@ -110,7 +110,8 @@ final class ServeCommand extends Command
             $status = $this->process->getExitCode();
             $this->components->error($status === self::EXIT_PORT_IN_USE
                 ? "Port {$port} is already in use, so Dynoxide couldn't start on it. Stop what's using it, or start "
-                    . 'Dynoxide on another port with --port or DYNOXIDE_PORT in .env.'
+                    . 'Dynoxide on another port with --port, DYNOXIDE_PORT in .env or dynoxide.port in '
+                    . 'config/dynoxide.php, and set DYNAMODB_ENDPOINT to match.'
                 : 'Dynoxide exited with status ' . ($status ?? 'unknown') . ' before it was ready.');
 
             return $status === 0 || $status === null ? self::FAILURE : $status;

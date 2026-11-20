@@ -31,12 +31,14 @@ final class DynoxideProcessPortTest extends PHPUnitTestCase
 
     public function test_a_port_is_kept_when_the_worker_gets_its_own_database_file(): void
     {
+        $this->setEnv('PARATEST', '1');
+        $this->setEnv('TEST_TOKEN', '3');
         $forThisWorker = new \ReflectionMethod(DynoxideProcess::class, 'forThisWorker');
 
         $options = $forThisWorker->invoke(null, new Options(dbPath: '/tmp/app.db', port: 8123));
 
         $this->assertSame(8123, $options->port);
-        $this->assertSame('/tmp/app.db', $options->dbPath);
+        $this->assertSame('/tmp/app.db-3', $options->dbPath);
     }
 
     /** @return iterable<string, array{array<string, mixed>}> */
@@ -72,6 +74,8 @@ final class DynoxideProcessPortTest extends PHPUnitTestCase
     #[RunInSeparateProcess]
     public function test_a_fixed_port_in_a_separate_process_is_refused(): void
     {
+        // The child inherits a ParaTest run's environment, whose message comes first.
+        putenv('PARATEST');
         $this->expectException(ConfigException::class);
         $this->expectExceptionMessage('a test that runs in a separate process starts a server of its own');
 
@@ -79,9 +83,8 @@ final class DynoxideProcessPortTest extends PHPUnitTestCase
     }
 
     /**
-     * The README says a port read from .env needs an (int) cast; without it
-     * the core refuses the string, and the trait's start failure carries
-     * that error as its previous one.
+     * The README says a port from an environment variable needs an (int)
+     * cast, and quotes the core's error for a string. This pins that wording.
      */
     public function test_a_port_given_as_a_string_gets_the_cores_wrong_type_error(): void
     {

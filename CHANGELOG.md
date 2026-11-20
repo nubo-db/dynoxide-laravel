@@ -8,10 +8,11 @@ Needs `nubo-db/dynoxide` 1.8.0 or later, which runs Dynoxide 1.8.0.
 
 ### Behaviour changes
 
-- **`dynoxide:serve` on a taken port exits 4**, not 1. It passes Dynoxide's
-  own status through, and Dynoxide 1.8.0 exits 4 for a port that's in use.
-  The message now names the port and says to change it with `--port` or
-  `DYNOXIDE_PORT`.
+- **`dynoxide:serve` on a taken port exits 4**, not 1, with Dynoxide 1.8.0
+  or later. It passes Dynoxide's own status through, and 1.8.0 exits 4 for a
+  port that's in use. The message now names the port and how to change it.
+  An older binary, through `DYNOXIDE_BINARY`, still exits 1 with the general
+  message.
 
 ### Added
 

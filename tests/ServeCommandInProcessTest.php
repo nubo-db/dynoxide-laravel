@@ -340,6 +340,7 @@ final class ServeCommandInProcessTest extends TestCase
         $this->assertSame(4, $status, $output);
         $this->assertStringContainsString('Port 8899 is already in use', $output);
         $this->assertStringContainsString('DYNOXIDE_PORT', $output);
+        $this->assertStringContainsString('dynoxide.port', $output);
         $this->assertStringNotContainsString('before it was ready', $output);
     }
 
